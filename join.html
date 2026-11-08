@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0d14">
+<title>TrioMeet — Join a room</title>
+<style>
+  :root {
+    --bg: #0a0d14;
+    --bg2: #101624;
+    --card: #151d2d;
+    --card2: #1a2437;
+    --line: rgba(255,255,255,.11);
+    --text: #eef3fb;
+    --muted: #9aa8be;
+    --accent: #63e6be;
+    --accent2: #38bdf8;
+    --danger: #fb7185;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --radius: 18px;
+    --shadow: 0 24px 70px rgba(0,0,0,.55);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background:
+      radial-gradient(1000px 600px at 80% -10%, rgba(56,189,248,.13), transparent 62%),
+      radial-gradient(800px 500px at 8% 110%, rgba(99,230,190,.10), transparent 65%),
+      linear-gradient(160deg, var(--bg), #070a10 70%);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  [hidden] { display: none !important; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent2);
+    outline-offset: 2px;
+  }
+  .app {
+    width: min(1120px, 100%);
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: max(12px, env(safe-area-inset-top)) clamp(12px, 3vw, 24px)
+             max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -.03em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .badge {
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.05);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: .06em;
+  }
+  .ghost {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.04);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 13px;
+  }
+  .ghost:hover { background: rgba(255,255,255,.09); }
+  .stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 260px;
+    aspect-ratio: 16 / 9;
+    max-height: calc(100dvh - 170px);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 45%, #182235, #0b0f17 72%);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  #remote {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #06080c;
+    opacity: 0;
+    transition: opacity .35s ease;
+  }
+  #remote.live { opacity: 1; }
+  .remote-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 16px;
+    padding: 28px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .pulse {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid rgba(99,230,190,.45);
+    background: rgba(99,230,190,.08);
+    box-shadow: 0 0 0 0 rgba(99,230,190,.32);
+    animation: pulse 2.1s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(99,230,190,.30); }
+    70% { box-shadow: 0 0 0 28px rgba(99,230,190,0); }
+    100% { box-shadow: 0 0 0 0 rgba(99,230,190,0); }
+  }
+  .self-wrap {
+    position: absolute;
+    right: clamp(10px, 2vw, 18px);
+    bottom: clamp(54px, 9vw, 78px);
+    width: clamp(94px, 22vw, 184px);
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.25);
+    background: #0b0f17;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  #self { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+  .self-wrap .you {
+    position: absolute;
+    left: 7px;
+    bottom: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #dfe8f5;
+    background: rgba(0,0,0,.5);
+    border-radius: 5px;
+    padding: 2px 5px;
+  }
+  .status {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100% - 24px);
+    border: 1px solid var(--line);
+    background: rgba(8,12,20,.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 12px;
+    color: #cbd6e7;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 0 0 3px rgba(154,168,190,.12);
+  }
+  .dot.good { background: var(--good); box-shadow: 0 0 0 3px rgba(74,222,128,.15); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 0 3px rgba(251,191,36,.15); }
+  .dot.bad { background: var(--danger); box-shadow: 0 0 0 3px rgba(251,113,133,.15); }
+  .tap-unmute {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    border: 1px solid rgba(255,255,255,.25);
+    background: rgba(8,12,20,.9);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 12px 20px;
+    font-weight: 700;
+    box-shadow: 0 12px 36px rgba(0,0,0,.5);
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 4vw, 22px);
+    padding: 2px 0 4px;
+  }
+  .round {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 92px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.055);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .round:hover { background: rgba(255,255,255,.1); }
+  .round[aria-pressed="false"] { opacity: .6; }
+  .round.danger {
+    border-color: rgba(251,113,133,.34);
+    background: rgba(251,113,133,.12);
+    color: #ffd4da;
+  }
+  .round.danger:hover { background: rgba(251,113,133,.2); }
+  .round .ico { font-size: 15px; line-height: 1; }
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+    background: rgba(3,6,11,.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    overflow: auto;
+  }
+  .sheet {
+    width: min(450px, 100%);
+    max-height: calc(100dvh - 28px);
+    overflow: auto;
+    background: linear-gradient(160deg, var(--card2), var(--card));
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: clamp(20px, 4vw, 30px);
+  }
+  .age-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 13px;
+    border-radius: 12px;
+    background: rgba(251,113,133,.13);
+    border: 1px solid rgba(251,113,133,.32);
+    color: #ffd3d9;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: .02em;
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(23px, 5vw, 29px);
+    line-height: 1.12;
+    letter-spacing: -.035em;
+  }
+  .notice {
+    margin: 0 0 14px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(251,191,36,.28);
+    background: rgba(251,191,36,.09);
+    color: #ffe8ad;
+    font-size: 14px;
+    line-height: 1.45;
+    font-weight: 650;
+  }
+  .sub, .fine {
+    margin: 0 0 17px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .fine { margin: 14px 0 0; }
+  label {
+    display: block;
+    margin: 13px 0 6px;
+    color: #c9d5e6;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  label span { color: var(--muted); font-weight: 500; }
+  input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,.22);
+    color: var(--text);
+    border-radius: 11px;
+    padding: 11px 12px;
+    font-size: 15px;
+  }
+  input::placeholder { color: #66758c; }
+  #roomInput { letter-spacing: .16em; text-transform: uppercase; font-weight: 700; }
+  .primary {
+    width: 100%;
+    border: 0;
+    border-radius: 12px;
+    padding: 13px 16px;
+    margin-top: 17px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #08211c;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: -.01em;
+    box-shadow: 0 10px 30px rgba(56,189,248,.18);
+  }
+  .primary:hover { filter: brightness(1.06); }
+  .primary:disabled { opacity: .55; cursor: wait; }
+  .wide { display: block; }
+  .sheet .ghost.wide { margin-top: 9px; }
+  .error {
+    margin: 13px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(251,113,133,.3);
+    background: rgba(251,113,133,.1);
+    color: #ffcbd2;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(78px, calc(env(safe-area-inset-bottom) + 70px));
+    transform: translateX(-50%);
+    z-index: 30;
+    max-width: calc(100vw - 30px);
+    border: 1px solid var(--line);
+    background: rgba(10,15,24,.95);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-size: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    text-align: center;
+  }
+  @media (max-width: 620px) {
+    .app { padding-left: 8px; padding-right: 8px; gap: 8px; }
+    .stage { aspect-ratio: auto; min-height: 0; max-height: none; width: 100%; }
+    .topbar { padding: 0 4px; }
+    .controls { gap: 8px; padding-bottom: max(2px, env(safe-area-inset-bottom)); }
+    .round { min-width: 0; flex: 1; padding: 11px 8px; font-size: 12px; }
+    .badge { font-size: 10px; }
+    .self-wrap { bottom: 52px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">TrioMeet</span>
+      <span class="badge" id="roomBadge" hidden></span>
+    </div>
+    <button id="leaveTop" class="ghost" type="button" hidden>Leave</button>
+  </header>
+
+  <main class="stage" id="stage">
+    <video id="remote" autoplay playsinline></video>
+    <div class="remote-empty" id="remoteEmpty">
+      <div class="pulse" aria-hidden="true"></div>
+      <p id="emptyText">Your host's camera will appear here.</p>
+    </div>
+    <div class="self-wrap" id="selfWrap" hidden>
+      <video id="self" autoplay playsinline muted></video>
+      <span class="you">You</span>
+    </div>
+    <div class="status" role="status" aria-live="polite">
+      <span class="dot" id="dot"></span>
+      <span id="statusText">Not connected</span>
+    </div>
+    <button class="tap-unmute" id="tapUnmute" type="button" hidden>Tap to enable sound</button>
+  </main>
+
+  <footer class="controls" id="controls" hidden>
+    <button id="micBtn" class="round" type="button" aria-pressed="true" title="Mute microphone">
+      <span class="ico" aria-hidden="true">🎙</span><span class="lbl">Mic on</span>
+    </button>
+    <button id="camBtn" class="round" type="button" aria-pressed="true" title="Turn camera off">
+      <span class="ico" aria-hidden="true">📷</span><span class="lbl">Cam on</span>
+    </button>
+    <button id="leaveBtn" class="round danger" type="button" title="Leave and release camera">
+      <span class="ico" aria-hidden="true">✕</span><span class="lbl">Leave</span>
+    </button>
+  </footer>
+</div>
+
+<div class="sheet-backdrop" id="consent" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+  <div class="sheet">
+    <div class="age-badge" aria-hidden="true">18+</div>
+    <h1 id="consentTitle">Before you join</h1>
+    <p class="notice">Your camera and audio will be shown live to strangers on a random video chat site. You must be 18+.</p>
+    <p class="sub">TrioMeet collects no analytics and has no accounts. Video and audio travel directly between you and the host, or through an encrypted TURN relay if a direct connection cannot be made. Only the PeerJS signaling service sees connection setup data.</p>
+
+    <div id="roomField">
+      <label for="roomInput">Room code</label>
+      <input id="roomInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" placeholder="From your invite link">
+    </div>
+    <label for="nameInput">Your name <span>(optional)</span></label>
+    <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="Friend">
+
+    <p class="error" id="consentError" hidden></p>
+    <button id="confirmBtn" class="primary wide" type="button">I'm 18+ — Join room</button>
+    <button id="cancelBtn" class="ghost wide" type="button">Cancel</button>
+    <p class="fine">You can leave at any time with the Leave button. Closing this page also stops your camera and microphone.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* -----------------------------------------------------------------------
+   * TrioMeet friend page
+   * - No accounts, cookies, analytics, or application backend.
+   * - PeerJS is the only external script. It is loaded from a pinned CDN with
+   *   a second CDN as fallback. Connection setup uses the free PeerJS broker.
+   * - Media is peer-to-peer when possible. TURN is included as a fallback for
+   *   strict NATs; DTLS-SRTP still encrypts media end to end.
+   * --------------------------------------------------------------------- */
+
+  const PEERJS_VERSION = '1.5.4';
+  const PEERJS_URLS = [
+    'https://cdn.jsdelivr.net/npm/peerjs@' + PEERJS_VERSION + '/dist/peerjs.min.js',
+    'https://unpkg.com/peerjs@' + PEERJS_VERSION + '/dist/peerjs.min.js'
+  ];
+  const ICE_SERVERS = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ];
+  const RTC_CONFIG = { iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 };
+  const HOST_PREFIX = 'trio-';
+  const $ = (id) => document.getElementById(id);
+
+  const ui = {
+    consent: $('consent'),
+    consentError: $('consentError'),
+    confirmBtn: $('confirmBtn'),
+    cancelBtn: $('cancelBtn'),
+    roomField: $('roomField'),
+    roomInput: $('roomInput'),
+    nameInput: $('nameInput'),
+    stage: $('stage'),
+    remote: $('remote'),
+    remoteEmpty: $('remoteEmpty'),
+    emptyText: $('emptyText'),
+    self: $('self'),
+    selfWrap: $('selfWrap'),
+    controls: $('controls'),
+    micBtn: $('micBtn'),
+    camBtn: $('camBtn'),
+    leaveBtn: $('leaveBtn'),
+    leaveTop: $('leaveTop'),
+    statusText: $('statusText'),
+    dot: $('dot'),
+    roomBadge: $('roomBadge'),
+    tapUnmute: $('tapUnmute'),
+    toast: $('toast')
+  };
+
+  const state = {
+    roomCode: '',
+    localStream: null,
+    remoteStream: null,
+    peer: null,
+    call: null,
+    starting: false,
+    leaving: false,
+    connected: false,
+    startedAt: 0,
+    joinSeq: 0,
+    connectTimer: 0,
+    timeoutTimer: 0,
+    toastTimer: 0,
+    peerReconnectTimer: 0
+  };
+
+  function log() {
+    try { console.log.apply(console, ['[TrioMeet]'].concat(Array.prototype.slice.call(arguments))); } catch (_) {}
+  }
+  function warn() {
+    try { console.warn.apply(console, ['[TrioMeet]'].concat(Array.prototype.slice.call(arguments))); } catch (_) {}
+  }
+
+  function showToast(text, duration) {
+    try {
+      ui.toast.textContent = text;
+      ui.toast.hidden = false;
+      clearTimeout(state.toastTimer);
+      state.toastTimer = setTimeout(function () { ui.toast.hidden = true; }, duration || 3200);
+    } catch (_) {}
+  }
+
+  function setStatus(text, kind) {
+    ui.statusText.textContent = text || '';
+    ui.dot.className = 'dot' + (kind ? ' ' + kind : '');
+  }
+
+  function setConsentError(text) {
+    if (text) {
+      ui.consentError.textContent = text;
+      ui.consentError.hidden = false;
+    } else {
+      ui.consentError.textContent = '';
+      ui.consentError.hidden = true;
+    }
+  }
+
+  function openConsent() {
+    ui.consent.hidden = false;
+    setTimeout(function () {
+      try {
+        if (!ui.roomInput.value) ui.roomInput.focus();
+        else ui.confirmBtn.focus();
+      } catch (_) {}
+    }, 40);
+  }
+
+  function closeConsent() {
+    ui.consent.hidden = true;
+  }
+
+  function friendlyMediaError(err) {
+    const name = err && err.name ? err.name : '';
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Camera or microphone permission was denied. Allow both in the browser site settings, then try again.';
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      return 'No camera or microphone was found. Connect one and try again.';
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+      return 'The camera or microphone is already in use by another app or tab.';
+    }
+    if (name === 'OverconstrainedError') {
+      return 'This camera cannot provide a usable video mode. Try another camera or browser.';
+    }
+    return 'Could not start the camera and microphone' + (err && err.message ? ': ' + err.message : '.');
+  }
+
+  function normalizeRoom(raw) {
+    let value = String(raw == null ? '' : raw).trim();
+    if (!value) return '';
+    // Accept a pasted invite URL as well as a bare room code.
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        value = decodeURIComponent(url.hash.replace(/^#/, '')) || url.searchParams.get('room') || '';
+      } catch (_) {}
+    }
+    value = value.replace(/^#/, '').trim();
+    if (value.toLowerCase().indexOf(HOST_PREFIX) === 0) value = value.slice(HOST_PREFIX.length);
+    return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  }
+
+  function roomFromLocation() {
+    try {
+      const hash = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+      if (hash) return normalizeRoom(hash);
+      const query = new URLSearchParams(location.search).get('room');
+      if (query) return normalizeRoom(query);
+    } catch (_) {}
+    return '';
+  }
+
+  function updateUrlRoom(code) {
+    try {
+      const base = location.href.split('#')[0];
+      history.replaceState(null, '', code ? base + '#' + code : base);
+    } catch (_) {}
+  }
+
+  function updateRoomBadge() {
+    if (state.roomCode) {
+      ui.roomBadge.textContent = 'Room ' + state.roomCode;
+      ui.roomBadge.hidden = false;
+    } else {
+      ui.roomBadge.hidden = true;
+    }
+  }
+
+  function applyRoomChip() {
+    updateRoomBadge();
+    if (state.roomCode) ui.roomInput.value = state.roomCode;
+  }
+
+  function stopStream(stream) {
+    if (!stream) return;
+    try {
+      stream.getTracks().forEach(function (track) {
+        try { track.stop(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function clearVideo(video) {
+    try {
+      video.pause();
+    } catch (_) {}
+    try {
+      video.srcObject = null;
+    } catch (_) {}
+  }
+
+  function loadPeerJS() {
+    if (window.Peer && typeof window.Peer === 'function') return Promise.resolve(window.Peer);
+    return new Promise(function (resolve, reject) {
+      let index = 0;
+      let settled = false;
+      function finish(err, lib) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (err) reject(err); else resolve(lib);
+      }
+      let timer = 0;
+      function next() {
+        if (settled) return;
+        if (index >= PEERJS_URLS.length) {
+          finish(new Error('Could not load PeerJS. Check your connection or an extension blocking cdn.jsdelivr.net / unpkg.com.'));
+          return;
+        }
+        const url = PEERJS_URLS[index++];
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.onload = function () {
+          if (window.Peer && typeof window.Peer === 'function') finish(null, window.Peer);
+          else next();
+        };
+        script.onerror = function () {
+          try { script.remove(); } catch (_) {}
+          next();
+        };
+        (document.head || document.documentElement).appendChild(script);
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          if (window.Peer && typeof window.Peer === 'function') finish(null, window.Peer);
+          else finish(new Error('Timed out loading PeerJS.'));
+        }, 14000);
+      }
+      next();
+    });
+  }
+
+  function getLocalMedia() {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      return Promise.reject(new Error('This browser does not expose camera access (getUserMedia).'));
+    }
+    const video = {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30, max: 30 },
+      facingMode: { ideal: 'user' }
+    };
+    const audio = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    };
+    return navigator.mediaDevices.getUserMedia({ video: video, audio: audio })
+      .catch(function (err) {
+        // A missing/denied microphone should not block a video-only join.
+        if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' ||
+                    err.name === 'NotReadableError' || err.name === 'OverconstrainedError')) {
+          return navigator.mediaDevices.getUserMedia({ video: video, audio: false })
+            .then(function (videoOnly) {
+              showToast('Microphone unavailable — joining with camera only.', 5000);
+              return videoOnly;
+            })
+            .catch(function () { throw err; });
+        }
+        throw err;
+      });
+  }
+
+  function showSelf(stream) {
+    ui.self.srcObject = stream;
+    ui.selfWrap.hidden = false;
+    const play = ui.self.play();
+    if (play && play.catch) play.catch(function () {});
+  }
+
+  function showControls() {
+    ui.controls.hidden = false;
+    ui.leaveTop.hidden = false;
+  }
+
+  function hideControls() {
+    ui.controls.hidden = true;
+    ui.leaveTop.hidden = true;
+  }
+
+  function updateSelfButtons() {
+    const mic = state.localStream && state.localStream.getAudioTracks()[0];
+    const cam = state.localStream && state.localStream.getVideoTracks()[0];
+    ui.micBtn.disabled = !mic;
+    ui.camBtn.disabled = !cam;
+    if (mic) {
+      ui.micBtn.setAttribute('aria-pressed', mic.enabled ? 'true' : 'false');
+      ui.micBtn.querySelector('.lbl').textContent = mic.enabled ? 'Mic on' : 'Mic off';
+      ui.micBtn.title = mic.enabled ? 'Mute microphone' : 'Unmute microphone';
+    }
+    if (cam) {
+      ui.camBtn.setAttribute('aria-pressed', cam.enabled ? 'true' : 'false');
+      ui.camBtn.querySelector('.lbl').textContent = cam.enabled ? 'Cam on' : 'Cam off';
+      ui.camBtn.title = cam.enabled ? 'Turn camera off' : 'Turn camera on';
+    }
+  }
+
+  function resetCallAndPeer() {
+    clearTimeout(state.connectTimer);
+    state.connectTimer = 0;
+    clearTimeout(state.timeoutTimer);
+    state.timeoutTimer = 0;
+    clearTimeout(state.peerReconnectTimer);
+    state.peerReconnectTimer = 0;
+    if (state.call) {
+      try { state.call.close(); } catch (_) {}
+      state.call = null;
+    }
+    if (state.peer) {
+      try { state.peer.destroy(); } catch (_) {}
+      state.peer = null;
+    }
+    state.connected = false;
+    state.starting = false;
+  }
+
+  function releaseMedia() {
+    stopStream(state.localStream);
+    stopStream(state.remoteStream);
+    state.localStream = null;
+    state.remoteStream = null;
+    clearVideo(ui.remote);
+    ui.remote.classList.remove('live');
+    clearVideo(ui.self);
+    ui.selfWrap.hidden = true;
+    ui.remoteEmpty.hidden = false;
+    ui.emptyText.textContent = 'Your host\'s camera will appear here.';
+    ui.tapUnmute.hidden = true;
+    hideControls();
+  }
+
+  function resetToLobby(message, isError) {
+    const code = state.roomCode;
+    state.joinSeq += 1;
+    resetCallAndPeer();
+    releaseMedia();
+    state.leaving = false;
+    state.roomCode = code;
+    applyRoomChip();
+    ui.confirmBtn.disabled = false;
+    ui.confirmBtn.textContent = 'I\'m 18+ — Join room';
+    setStatus('Not connected', '');
+    if (message) setConsentError(message);
+    else setConsentError('');
+    openConsent();
+    if (isError) showToast(message, 6000);
+  }
+
+  function attachRemoteStream(stream) {
+    if (!stream) return;
+    if (state.remoteStream === stream) return;
+    state.remoteStream = stream;
+    state.connected = true;
+    state.starting = false;
+    clearTimeout(state.connectTimer);
+    state.connectTimer = 0;
+    clearTimeout(state.timeoutTimer);
+    state.timeoutTimer = 0;
+    ui.remote.srcObject = stream;
+    ui.remote.muted = false;
+    ui.remoteEmpty.hidden = true;
+    ui.remote.classList.add('live');
+    const play = ui.remote.play();
+    if (play && play.catch) {
+      play.catch(function () {
+        ui.tapUnmute.hidden = false;
+        showToast('Tap the video once to enable sound.', 4500);
+      });
+    }
+    ui.tapUnmute.hidden = true;
+    setStatus('Connected to TrioMeet', 'good');
+    applyRoomChip();
+    showControls();
+    updateSelfButtons();
+    log('Remote composite stream connected', stream.id);
+  }
+
+  function handlePeerFailure(err) {
+    if (state.leaving) return;
+    const type = err && err.type ? err.type : '';
+    if (type === 'peer-unavailable') {
+      resetToLobby('Room not found, or the host has stopped TrioMeet. Ask the host for a fresh link.', true);
+      return;
+    }
+    if (type === 'browser-incompatible') {
+      resetToLobby('This browser does not support the WebRTC features TrioMeet needs. Try a current Chrome, Edge, Firefox, or Safari.', true);
+      return;
+    }
+    if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'socket-closed') {
+      setStatus('Signaling connection problem — retrying…', 'warn');
+      if (state.peer && !state.peer.destroyed) {
+        clearTimeout(state.peerReconnectTimer);
+        state.peerReconnectTimer = setTimeout(function () {
+          if (!state.leaving && state.peer && !state.peer.destroyed) {
+            try { state.peer.reconnect(); } catch (_) {}
+          }
+        }, 1600);
+      }
+      return;
+    }
+    if (!state.connected) {
+      resetToLobby('Could not connect to the room' + (err && err.message ? ': ' + err.message : '.'), true);
+    } else {
+      showToast('Connection warning: ' + (err && err.message ? err.message : type || 'unknown error'), 5000);
+    }
+  }
+
+  function connectToHost(PeerLib) {
+    return new Promise(function (resolve, reject) {
+      if (!state.roomCode) {
+        reject(new Error('Enter a room code.'));
+        return;
+      }
+      const hostId = HOST_PREFIX + state.roomCode;
+      let settled = false;
+      let opened = false;
+      const peer = new PeerLib(null, { debug: 0, config: RTC_CONFIG });
+      state.peer = peer;
+
+      const fail = function (err) {
+        if (settled) return;
+        settled = true;
+        try { peer.destroy(); } catch (_) {}
+        if (state.peer === peer) state.peer = null;
+        reject(err);
+      };
+
+      peer.on('open', function () {
+        if (settled || state.leaving) return;
+        opened = true;
+        setStatus('Calling the host…', 'warn');
+        let call = null;
+        try {
+          const name = (ui.nameInput.value || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 20) || 'Friend';
+          try { localStorage.setItem('triomeet.name', name); } catch (_) {}
+          call = peer.call(hostId, state.localStream, { metadata: { name: name } });
+        } catch (err) {
+          fail(err);
+          return;
+        }
+        if (!call) {
+          fail(new Error('The host did not answer.'));
+          return;
+        }
+        state.call = call;
+        settled = true;
+        resolve(call);
+
+        call.on('stream', function (remote) {
+          if (state.leaving) return;
+          attachRemoteStream(remote);
+        });
+        call.on('close', function () {
+          if (state.leaving) return;
+          if (state.connected) {
+            resetToLobby('The host ended the TrioMeet session. Ask for a new link to rejoin.', true);
+          } else {
+            resetToLobby('The host closed the call before connecting. Ask for a new link.', true);
+          }
+        });
+        call.on('error', function (err) {
+          warn('Media call error', err);
+          if (!state.connected) {
+            resetToLobby('The connection failed. If you are behind a strict network, try another network or mobile data.', true);
+          } else {
+            showToast('The media connection is having trouble.', 4500);
+          }
+        });
+
+        clearTimeout(state.connectTimer);
+        state.connectTimer = setTimeout(function () {
+          if (!state.connected && !state.leaving) {
+            setStatus('Still connecting… This can take a little longer on strict networks.', 'warn');
+          }
+        }, 22000);
+
+        clearTimeout(state.timeoutTimer);
+        state.timeoutTimer = setTimeout(function () {
+          if (!state.connected && !state.leaving) {
+            resetToLobby('Could not establish the call. This usually means a strict firewall or an offline host. Try another network or mobile data.', true);
+          }
+        }, 60000);
+      });
+
+      peer.on('error', function (err) {
+        warn('Peer error', err);
+        if (!opened) {
+          fail(err);
+        } else {
+          handlePeerFailure(err);
+        }
+      });
+
+      peer.on('disconnected', function () {
+        if (state.leaving) return;
+        setStatus('Signaling disconnected — media may continue. Reconnecting…', 'warn');
+        clearTimeout(state.peerReconnectTimer);
+        state.peerReconnectTimer = setTimeout(function () {
+          if (!state.leaving && state.peer && !state.peer.destroyed) {
+            try { state.peer.reconnect(); } catch (_) {}
+          }
+        }, 1500);
+      });
+
+      peer.on('close', function () {
+        if (state.leaving) return;
+        if (state.connected) {
+          resetToLobby('The room signaling closed. Ask the host for a fresh link.', true);
+        } else if (!settled) {
+          fail(new Error('The signaling server closed the connection.'));
+        }
+      });
+    });
+  }
+
+  async function startJoin() {
+    if (state.starting || state.leaving || state.connected) return;
+    const code = normalizeRoom(ui.roomInput.value);
+    if (!code || code.length < 4) {
+      setConsentError('Enter the room code from your invite link.');
+      ui.roomInput.focus();
+      return;
+    }
+    const seq = ++state.joinSeq;
+    state.roomCode = code;
+    updateUrlRoom(code);
+    applyRoomChip();
+    setConsentError('');
+    state.starting = true;
+    ui.confirmBtn.disabled = true;
+    ui.confirmBtn.textContent = 'Connecting…';
+    closeConsent();
+    setStatus('Requesting camera and microphone…', 'warn');
+    ui.remoteEmpty.hidden = false;
+    ui.emptyText.textContent = 'Connecting to your host…';
+    showControls();
+    ui.micBtn.disabled = true;
+    ui.camBtn.disabled = true;
+
+    try {
+      // Wait for both tasks even if one fails, so a successfully opened camera
+      // is always stopped when PeerJS is blocked or unavailable.
+      const results = await Promise.allSettled([getLocalMedia(), loadPeerJS()]);
+      const mediaResult = results[0];
+      const peerResult = results[1];
+
+      if (seq !== state.joinSeq || state.leaving) {
+        if (mediaResult.status === 'fulfilled') stopStream(mediaResult.value);
+        return;
+      }
+      if (mediaResult.status === 'rejected') throw mediaResult.reason;
+      const local = mediaResult.value;
+      if (peerResult.status === 'rejected') {
+        stopStream(local);
+        throw peerResult.reason;
+      }
+      const PeerLib = peerResult.value;
+
+      if (seq !== state.joinSeq || state.leaving) {
+        stopStream(local);
+        return;
+      }
+      state.localStream = local;
+      showSelf(local);
+      updateSelfButtons();
+      setStatus('Connecting to the room…', 'warn');
+      await connectToHost(PeerLib);
+    } catch (err) {
+      warn('Join failed', err);
+      if (seq !== state.joinSeq || state.leaving) return;
+      const message = (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' ||
+        err.name === 'NotReadableError' || err.name === 'OverconstrainedError'))
+        ? friendlyMediaError(err)
+        : (err && err.message ? err.message : 'Could not join the room.');
+      resetToLobby(message, true);
+    }
+  }
+
+  function leaveSession(showLobby) {
+    if (state.leaving) return;
+    state.leaving = true;
+    state.joinSeq += 1;
+    setStatus('Leaving — releasing camera and microphone…', 'warn');
+    resetCallAndPeer();
+    releaseMedia();
+    updateSelfButtons();
+    state.leaving = false;
+    setStatus('You left the room', '');
+    if (showLobby !== false) {
+      // Consent is requested again before any reconnect, as required.
+      setConsentError('');
+      openConsent();
+      ui.confirmBtn.disabled = false;
+      ui.confirmBtn.textContent = 'I\'m 18+ — Join room';
+      applyRoomChip();
+    }
+  }
+
+  // --- UI wiring ----------------------------------------------------------
+
+  ui.confirmBtn.addEventListener('click', function () {
+    startJoin();
+  });
+
+  ui.cancelBtn.addEventListener('click', function () {
+    setConsentError('');
+    const code = state.roomCode || roomFromLocation();
+    if (!code) {
+      showToast('A room code is required to join.');
+      return;
+    }
+    // Removing the hash makes it harder to re-open the room accidentally.
+    updateUrlRoom('');
+    ui.roomInput.value = '';
+    state.roomCode = '';
+    updateRoomBadge();
+    setStatus('Not connected', '');
+    showToast('Join canceled. Camera and microphone were not used.');
+  });
+
+  ui.micBtn.addEventListener('click', function () {
+    const track = state.localStream && state.localStream.getAudioTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    updateSelfButtons();
+  });
+
+  ui.camBtn.addEventListener('click', function () {
+    const track = state.localStream && state.localStream.getVideoTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    updateSelfButtons();
+  });
+
+  ui.leaveBtn.addEventListener('click', function () { leaveSession(true); });
+  ui.leaveTop.addEventListener('click', function () { leaveSession(true); });
+  ui.tapUnmute.addEventListener('click', function () {
+    try {
+      ui.remote.muted = false;
+      const play = ui.remote.play();
+      if (play && play.catch) play.catch(function () {});
+      ui.tapUnmute.hidden = true;
+      setStatus('Connected to TrioMeet', 'good');
+    } catch (_) {}
+  });
+
+  ui.roomInput.addEventListener('input', function () {
+    const caret = ui.roomInput.selectionStart;
+    ui.roomInput.value = ui.roomInput.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
+    try { ui.roomInput.setSelectionRange(caret, caret); } catch (_) {}
+  });
+
+  ui.nameInput.addEventListener('change', function () {
+    try { localStorage.setItem('triomeet.name', ui.nameInput.value.slice(0, 20)); } catch (_) {}
+  });
+
+  window.addEventListener('pagehide', function () {
+    state.leaving = true;
+    resetCallAndPeer();
+    releaseMedia();
+  });
+
+  window.addEventListener('pageshow', function (event) {
+    if (event && event.persisted) {
+      // The browser restored this page from the back/forward cache after the
+      // camera and PeerJS connection were released. Reload for a clean state.
+      try { location.reload(); } catch (_) {}
+    }
+  });
+
+  // --- Boot ---------------------------------------------------------------
+
+  try {
+    const savedName = localStorage.getItem('triomeet.name');
+    if (savedName) ui.nameInput.value = savedName.slice(0, 20);
+  } catch (_) {}
+
+  const initialRoom = roomFromLocation();
+  if (initialRoom) {
+    state.roomCode = initialRoom;
+    ui.roomInput.value = initialRoom;
+    applyRoomChip();
+  } else {
+    ui.roomInput.value = '';
+  }
+
+  const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (!secure) {
+    setConsentError('Camera access needs a secure page. Open this file through GitHub Pages (https://) or localhost.');
+    ui.confirmBtn.disabled = true;
+  } else if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    setConsentError('This browser does not support camera access. Try a current Chrome, Edge, Firefox, or Safari.');
+    ui.confirmBtn.disabled = true;
+  } else if (typeof window.RTCPeerConnection !== 'function') {
+    setConsentError('This browser does not support WebRTC, which TrioMeet needs for peer-to-peer video.');
+    ui.confirmBtn.disabled = true;
+  }
+
+  if (!initialRoom) {
+    setStatus('Enter your room code to join', '');
+  } else {
+    setStatus('Ready to join room ' + initialRoom, '');
+  }
+  openConsent();
+  log('Friend page ready. Loaded from', location.href.split('#')[0]);
+}());
+</script>
+</body>
+</html>
